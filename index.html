@@ -5,9 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenAI ChatKit Service</title>
-
-    <script id="chatkit-script" src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" async
-        onload="initializeChatKit()"></script>
+    <script id="chatkit-script" src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" async></script>
 
     <style>
         body {
@@ -50,40 +48,64 @@
     </div>
 
     <script>
-        // This function is triggered by the 'onload' event on the script tag.
+        // --- Start of Robust Initialization Logic ---
+
+        // A simple polling function to wait for the ChatKit library
+        function pollForChatKit(callback) {
+            if (window.ChatKit) {
+                callback();
+            } else {
+                // Check again after a short delay
+                setTimeout(() => pollForChatKit(callback), 100);
+            }
+        }
+
+        // Function to initialize the ChatKit element
         function initializeChatKit() {
             const chatkitElement = document.getElementById('my-chat-widget');
 
-            // At this point, window.ChatKit is guaranteed to be available.
-            if (chatkitElement && window.ChatKit) {
-
-                window.ChatKit.mount(chatkitElement, {
-                    api: {
-                        getClientSecret: async (currentClientSecret) => {
-                            // ... your existing secure fetch logic goes here ...
-
-                            const response = await fetch('/.netlify/functions/chatkit-session', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ deviceId: 'browser-id-123' }),
-                            });
-
-                            // ... rest of your session handling
-                            const data = await response.json();
-                            return data.client_secret;
-                        }
-                    },
-                    options: {
-                        theme: 'light',
-                        header: { title: 'AI Support Bot' }
-                    }
-                });
-            } else {
-                // This is now a safeguard for the HTML element, but the library should be fine.
-                console.error("ChatKit element not found on page.");
+            if (!chatkitElement) {
+                console.error("ChatKit element (my-chat-widget) still not found.");
+                return; // Exit if element is not ready
             }
+
+            // At this point, the element is in the DOM and window.ChatKit is ready.
+            window.ChatKit.mount(chatkitElement, {
+                api: {
+                    getClientSecret: async (currentClientSecret) => {
+                        if (currentClientSecret) {
+                            return currentClientSecret;
+                        }
+
+                        // Call your Netlify Function endpoint
+                        const response = await fetch('/.netlify/functions/chatkit-session', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ deviceId: 'browser-id-123' }),
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to start chat session with server.');
+                        }
+
+                        const data = await response.json();
+                        return data.client_secret;
+                    }
+                },
+                options: {
+                    theme: 'light',
+                    header: { title: 'AI Support Bot' }
+                }
+            });
         }
-        // You no longer need the 'document.addEventListener('DOMContentLoaded', ...)' wrapper.
+
+        // 1. Wait for the HTML DOM content to be fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // 2. Once the DOM is ready, start polling/waiting for the ChatKit library
+            pollForChatKit(initializeChatKit);
+        });
+
+        // --- End of Robust Initialization Logic ---
     </script>
 </body>
 
