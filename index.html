@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAI ChatKit Service</title>
+    
+    <script 
+        src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" 
+        async
+    ></script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+        }
+        #chat-container {
+            width: 100%;
+            max-width: 450px;
+            height: 600px; /* Set a fixed height for the chat widget */
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            background: white;
+        }
+        openai-chatkit {
+            /* Ensures the component takes up the full container space */
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>My AI Assistant</h1>
+    <div id="chat-container">
+        <openai-chatkit id="my-chat-widget"></openai-chatkit>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatkitElement = document.getElementById('my-chat-widget');
+            
+            // Check for ChatKit library load and element existence
+            if (chatkitElement && window.ChatKit) {
+                
+                window.ChatKit.mount(chatkitElement, {
+                    api: {
+                        // 3. Define the function to fetch the secure client secret
+                        getClientSecret: async (currentClientSecret) => {
+                            // If we already have a secret (for refreshing a session), skip this for simplicity
+                            if (currentClientSecret) {
+                                // You would implement a session refresh call here for production
+                                return currentClientSecret;
+                            }
+
+                            // Call your Netlify Function endpoint
+                            const response = await fetch('/.netlify/functions/chatkit-session', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                // Optionally send user data to your server function
+                                body: JSON.stringify({ 
+                                    deviceId: 'browser-id-123' 
+                                }),
+                            });
+
+                            if (!response.ok) {
+                                throw new Error('Failed to start chat session with server.');
+                            }
+
+                            const data = await response.json();
+                            
+                            if (data.client_secret) {
+                                return data.client_secret;
+                            } else {
+                                throw new Error('Client secret not received from server.');
+                            }
+                        }
+                    },
+                    // Optional: Customization options here
+                    options: {
+                        theme: 'light', // or 'dark'
+                        header: { title: 'AI Support Bot' }
+                        // ... other ChatKit options
+                    }
+                });
+            } else {
+                 console.error("ChatKit library or element not found.");
+            }
+        });
+    </script>
+</body>
+</html>

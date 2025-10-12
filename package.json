@@ -1,0 +1,14 @@
+{
+  "name": "netlify-chatkit-backend",
+  "version": "1.0.0",
+  "description": "Dependencies for the Netlify Function to generate ChatKit sessions.",
+  "main": "netlify/functions/chatkit-session.js",
+  "dependencies": {
+    "openai": "^4.0.0" 
+    /* NOTE: Use a version that supports the beta.chatkit.sessions API, 
+       often ^4.0.0 or later for the modern API. */
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
