@@ -1,0 +1,5 @@
+[build]
+  # The folder to publish to Netlify (the root of your website)
+  publish = "."
+  # The directory where Netlify can find your serverless functions
+  functions = "netlify/functions"
