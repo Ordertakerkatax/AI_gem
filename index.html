@@ -51,23 +51,29 @@
         window.runChatKitMount = function () {
             console.log("1. ChatKit script has finished loading (onload triggered).");
 
+            // We select the actual <openai-chatkit> element
             const chatkitElement = document.getElementById('my-chat-widget');
 
-            // --- Self-checking mechanism to wait for the DOM element ---
+            // --- Self-checking mechanism ---
             if (!chatkitElement) {
                 console.log("2. DOM element not ready yet. Retrying in 50ms...");
-                // Use a short delay to wait for the browser to render the DOM element
                 setTimeout(runChatKitMount, 50);
                 return;
             }
             // --- End of self-checking mechanism ---
 
-            console.log("3. DOM element found. Starting ChatKit mount...");
+            console.log("3. DOM element found. Starting ChatKit configuration...");
 
-            window.ChatKit.mount(chatkitElement, {
+            // Check if the setOptions method exists on the element
+            if (typeof chatkitElement.setOptions !== 'function') {
+                console.error("CRITICAL: The <openai-chatkit> element's setOptions method is not available. ChatKit library failed to fully initialize.");
+                return;
+            }
+
+            // 🔥 CORRECT SYNTAX: Use the setOptions method on the element itself
+            chatkitElement.setOptions({
                 api: {
                     getClientSecret: async (currentClientSecret) => {
-                        // CRITICAL LOG: This must appear in your Network tab
                         console.log("4. Fetching client secret from Netlify Function...");
 
                         if (currentClientSecret) {
@@ -75,6 +81,7 @@
                         }
 
                         try {
+                            // This is the call that initiates the network request
                             const response = await fetch('/.netlify/functions/chatkit-session', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -82,7 +89,6 @@
                             });
 
                             if (!response.ok) {
-                                // This log will appear if the Netlify Function returns a 4xx or 5xx
                                 console.error('5. Netlify Function returned an error status:', response.status);
                                 throw new Error('Failed to start chat session with server. Check Netlify logs.');
                             }
@@ -92,7 +98,6 @@
 
                         } catch (error) {
                             console.error('6. ERROR during client secret fetch:', error);
-                            // The ChatKit UI will block if this fails
                             throw error;
                         }
                     }
@@ -102,7 +107,8 @@
                     header: { title: 'AI Support Bot' }
                 }
             });
-            console.log("7. ChatKit mount attempt complete.");
+
+            console.log("7. ChatKit configuration attempt complete.");
         }
     </script>
 </body>
