@@ -43,7 +43,7 @@ exports.handler = async (event, context) => {
                 "OpenAI-Beta": "chatkit_beta=v1",
             },
             body: JSON.stringify({
-                workflow_id: WORKFLOW_ID,
+                workflow: WORKFLOW_ID,
                 user: {
                     id: userData.deviceId || 'anonymous-user', 
                     name: 'Web User' 
