@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenAI ChatKit Service</title>
-    <script id="chatkit-script" src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"></script>
+    <script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" async
+        onload="runChatKitMount()"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -46,41 +47,54 @@
         <openai-chatkit id="my-chat-widget"></openai-chatkit>
     </div>
     <script>
-        // 1. Define the core initialization function
-        function runChatKitMount() {
-            // CRITICAL LOG: This must appear in your console if the function runs!
-            console.log("ChatKit Library is now loaded and initialization is running.");
+        // Define the function globally so the external script's 'onload' can call it.
+        window.runChatKitMount = function () {
+            console.log("1. ChatKit script has finished loading (onload triggered).");
 
             const chatkitElement = document.getElementById('my-chat-widget');
 
-            if (!chatkitElement || !window.ChatKit) {
-                // Failsafe check
-                console.error("Initialization failed: Element or ChatKit object missing.");
+            // --- Self-checking mechanism to wait for the DOM element ---
+            if (!chatkitElement) {
+                console.log("2. DOM element not ready yet. Retrying in 50ms...");
+                // Use a short delay to wait for the browser to render the DOM element
+                setTimeout(runChatKitMount, 50);
                 return;
             }
+            // --- End of self-checking mechanism ---
 
-            // 2. Perform the mount (The same code you had before)
+            console.log("3. DOM element found. Starting ChatKit mount...");
+
             window.ChatKit.mount(chatkitElement, {
                 api: {
                     getClientSecret: async (currentClientSecret) => {
-                        console.log("Fetching client secret from Netlify Function..."); // Log for network check
+                        // CRITICAL LOG: This must appear in your Network tab
+                        console.log("4. Fetching client secret from Netlify Function...");
 
                         if (currentClientSecret) {
                             return currentClientSecret;
                         }
 
-                        const response = await fetch('/.netlify/functions/chatkit-session', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ deviceId: 'browser-id-123' }),
-                        });
+                        try {
+                            const response = await fetch('/.netlify/functions/chatkit-session', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ deviceId: 'browser-id-123' }),
+                            });
 
-                        if (!response.ok) {
-                            throw new Error('Failed to start chat session with server.');
+                            if (!response.ok) {
+                                // This log will appear if the Netlify Function returns a 4xx or 5xx
+                                console.error('5. Netlify Function returned an error status:', response.status);
+                                throw new Error('Failed to start chat session with server. Check Netlify logs.');
+                            }
+
+                            const data = await response.json();
+                            return data.client_secret;
+
+                        } catch (error) {
+                            console.error('6. ERROR during client secret fetch:', error);
+                            // The ChatKit UI will block if this fails
+                            throw error;
                         }
-
-                        const data = await response.json();
-                        return data.client_secret;
                     }
                 },
                 options: {
@@ -88,16 +102,7 @@
                     header: { title: 'AI Support Bot' }
                 }
             });
-        }
-
-        // 3. Attach the load listener to the external script element
-        const chatkitScript = document.getElementById('chatkit-script');
-
-        if (chatkitScript) {
-            // The event listener is guaranteed to fire when the script completes loading
-            chatkitScript.addEventListener('load', runChatKitMount);
-        } else {
-            console.error("FATAL: Could not find the chatkit-script tag in the DOM.");
+            console.log("7. ChatKit mount attempt complete.");
         }
     </script>
 </body>
