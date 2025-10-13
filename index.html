@@ -101,6 +101,7 @@
 
         // 1. Wait for the HTML DOM content to be fully loaded
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM is ready");
             // 2. Once the DOM is ready, start polling/waiting for the ChatKit library
             pollForChatKit(initializeChatKit);
         });
