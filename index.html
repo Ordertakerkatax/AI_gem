@@ -5,8 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenAI ChatKit Service</title>
-    <script id="chatkit-script" src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" async></script>
-
+    <script id="chatkit-script" src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -46,38 +45,30 @@
     <div id="chat-container">
         <openai-chatkit id="my-chat-widget"></openai-chatkit>
     </div>
-
     <script>
-        // --- Start of Robust Initialization Logic ---
+        // 1. Define the core initialization function
+        function runChatKitMount() {
+            // CRITICAL LOG: This must appear in your console if the function runs!
+            console.log("ChatKit Library is now loaded and initialization is running.");
 
-        // A simple polling function to wait for the ChatKit library
-        function pollForChatKit(callback) {
-            if (window.ChatKit) {
-                callback();
-            } else {
-                // Check again after a short delay
-                setTimeout(() => pollForChatKit(callback), 100);
-            }
-        }
-
-        // Function to initialize the ChatKit element
-        function initializeChatKit() {
             const chatkitElement = document.getElementById('my-chat-widget');
-            console.log("Initialization starting...");
-            if (!chatkitElement) {
-                console.error("ChatKit element (my-chat-widget) still not found.");
-                return; // Exit if element is not ready
+
+            if (!chatkitElement || !window.ChatKit) {
+                // Failsafe check
+                console.error("Initialization failed: Element or ChatKit object missing.");
+                return;
             }
 
-            // At this point, the element is in the DOM and window.ChatKit is ready.
+            // 2. Perform the mount (The same code you had before)
             window.ChatKit.mount(chatkitElement, {
                 api: {
                     getClientSecret: async (currentClientSecret) => {
+                        console.log("Fetching client secret from Netlify Function..."); // Log for network check
+
                         if (currentClientSecret) {
                             return currentClientSecret;
                         }
-                        console.log("Fetching client secret from Netlify Function...");
-                        // Call your Netlify Function endpoint
+
                         const response = await fetch('/.netlify/functions/chatkit-session', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -99,14 +90,15 @@
             });
         }
 
-        // 1. Wait for the HTML DOM content to be fully loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM is ready");
-            // 2. Once the DOM is ready, start polling/waiting for the ChatKit library
-            pollForChatKit(initializeChatKit);
-        });
+        // 3. Attach the load listener to the external script element
+        const chatkitScript = document.getElementById('chatkit-script');
 
-        // --- End of Robust Initialization Logic ---
+        if (chatkitScript) {
+            // The event listener is guaranteed to fire when the script completes loading
+            chatkitScript.addEventListener('load', runChatKitMount);
+        } else {
+            console.error("FATAL: Could not find the chatkit-script tag in the DOM.");
+        }
     </script>
 </body>
 
