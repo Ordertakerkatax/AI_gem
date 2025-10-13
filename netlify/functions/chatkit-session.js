@@ -46,10 +46,7 @@ exports.handler = async (event, context) => {
                 workflow: {
                     id: "wf_68e499b75644819092b2e8ed2c3a28ad0d6f86991ff8a181" // The ID string from your Netlify environment variable
                 },
-                user: {
-                    id: userData.deviceId || 'anonymous-user', 
-                    name: 'Web User' 
-                },
+               "user": userData.deviceId || 'anonymous-user'
             }),
         });
 
