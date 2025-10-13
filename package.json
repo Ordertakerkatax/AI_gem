@@ -4,7 +4,9 @@
   "description": "Dependencies for the Netlify Function to generate ChatKit sessions.",
   "main": "netlify/functions/chatkit-session.js",
   "dependencies": {
-    "openai": "4.38.5" // Force a known-good version for the ChatKit API
+    "openai": "4.38.5" 
+    /* NOTE: If you have other dependencies, make sure there is a comma after this line,
+       but NO comma if this is the last dependency in the list. */
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
