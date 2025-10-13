@@ -63,7 +63,7 @@
         // Function to initialize the ChatKit element
         function initializeChatKit() {
             const chatkitElement = document.getElementById('my-chat-widget');
-
+            console.log("Initialization starting...");
             if (!chatkitElement) {
                 console.error("ChatKit element (my-chat-widget) still not found.");
                 return; // Exit if element is not ready
@@ -76,7 +76,7 @@
                         if (currentClientSecret) {
                             return currentClientSecret;
                         }
-
+                        console.log("Fetching client secret from Netlify Function...");
                         // Call your Netlify Function endpoint
                         const response = await fetch('/.netlify/functions/chatkit-session', {
                             method: 'POST',
