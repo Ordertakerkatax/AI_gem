@@ -17,7 +17,7 @@ exports.handler = async (event, context) => {
         userData = JSON.parse(event.body || '{}');
     } catch (e) { /* ignore */ }
 
-    const session = await openai.chatkit.sessions.create({
+    const session = await openai.beta.chatkit.sessions.create({
       workflow_id: WORKFLOW_ID,
       user: { id: userData.deviceId || 'anonymous-user', name: 'Web User' },
     });
