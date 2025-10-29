@@ -1,116 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenAI ChatKit Service</title>
-    <script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" async
-        onload="runChatKitMount()"></script>
+    <title>ChatKit Demo Mode</title>
+    <!-- 1. Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. The official ChatKit JavaScript library -->
+    <script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js" async></script>
     <style>
-        body {
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            background-color: #f0f2f5;
-        }
-
-        #chat-container {
-            width: 100%;
-            max-width: 450px;
-            height: 600px;
-            /* Set a fixed height for the chat widget */
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            background: white;
-        }
-
-        openai-chatkit {
-            /* Ensures the component takes up the full container space */
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
 
-<body>
-    <h1>My AI Assistant</h1>
-    <div id="chat-container">
-        <openai-chatkit id="my-chat-widget"></openai-chatkit>
+    <div class="w-full max-w-md mx-auto bg-white rounded-xl shadow-lg p-8">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">ChatKit Demo</h1>
+        <p class="text-center text-gray-500 mb-6">You can send up to 5 messages in this demo.</p>
+        
+        <!-- This container is now relative for positioning the overlay -->
+        <div class="relative">
+            <!-- This is where the ChatKit component will be mounted -->
+            <div id="my-chat" class="h-[600px] w-full border border-gray-200 rounded-lg">
+                 <!-- Loading indicator -->
+                <div class="flex items-center justify-center h-full">
+                    <div class="text-gray-500">Loading Chat...</div>
+                </div>
+            </div>
+
+            <!-- DEMO END OVERLAY -->
+            <!-- This is hidden by default and will be shown when the message limit is reached -->
+            <div id="demo-end-overlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm flex-col items-center justify-center rounded-lg text-center p-4 hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-2">Demo Over</h2>
+                <p class="text-gray-600 mb-4">You've reached the message limit for this demo session.</p>
+                <button onclick="location.reload()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                    Start New Demo
+                </button>
+            </div>
+        </div>
     </div>
+
     <script>
-        // Define the function globally so the external script's 'onload' can call it.
-        window.runChatKitMount = function () {
-            console.log("1. ChatKit script has finished loading (onload triggered).");
+        window.onload = function () {
+            // --- DEMO CONFIGURATION ---
+            const MESSAGE_LIMIT = 5;
+            let messageCount = 0;
+            // --------------------------
 
-            // We select the actual <openai-chatkit> element
-            const chatkitElement = document.getElementById('my-chat-widget');
+            const chatContainer = document.getElementById('my-chat');
+            const demoOverlay = document.getElementById('demo-end-overlay');
 
-            // --- Self-checking mechanism ---
-            if (!chatkitElement) {
-                console.log("2. DOM element not ready yet. Retrying in 50ms...");
-                setTimeout(runChatKitMount, 50);
-                return;
-            }
-            // --- End of self-checking mechanism ---
-
-            console.log("3. DOM element found. Starting ChatKit configuration...");
-
-            // Check if the setOptions method exists on the element
-            if (typeof chatkitElement.setOptions !== 'function') {
-                console.error("CRITICAL: The <openai-chatkit> element's setOptions method is not available. ChatKit library failed to fully initialize.");
+            if (!chatContainer || !demoOverlay) {
+                console.error("Required elements ('my-chat', 'demo-end-overlay') not found.");
                 return;
             }
 
-            // 🔥 CORRECT SYNTAX: Use the setOptions method on the element itself
-            chatkitElement.setOptions({
-                api: {
-                    getClientSecret: async (currentClientSecret) => {
-                        console.log("4. Fetching client secret from Netlify Function...");
+            // Listen for the 'message:send' event from the ChatKit component
+            chatContainer.addEventListener('message:send', () => {
+                messageCount++;
+                console.log(`Message count: ${messageCount}/${MESSAGE_LIMIT}`);
 
-                        if (currentClientSecret) {
-                            return currentClientSecret;
-                        }
-
-                        try {
-                            // This is the call that initiates the network request
-                            const response = await fetch('/.netlify/functions/chatkit-session', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ deviceId: 'browser-id-123' }),
-                            });
-
-                            if (!response.ok) {
-                                console.error('5. Netlify Function returned an error status:', response.status);
-                                throw new Error('Failed to start chat session with server. Check Netlify logs.');
-                            }
-
-                            const data = await response.json();
-                            return data.client_secret;
-
-                        } catch (error) {
-                            console.error('6. ERROR during client secret fetch:', error);
-                            throw error;
-                        }
-                    }
-                },
-
-                //theme: 'light',
-            //    title: 'AI Support Bot',
-
+                if (messageCount >= MESSAGE_LIMIT) {
+                    console.log("Message limit reached. Displaying demo overlay.");
+                    // The 'hidden' class uses 'display: none'. We change it to 'flex'.
+                    demoOverlay.classList.remove('hidden');
+                    demoOverlay.classList.add('flex');
+                }
             });
 
-            console.log("7. ChatKit configuration attempt complete.");
-        }
+            /**
+             * Generates a unique ID for the user for the current browser session.
+             * Stored in `sessionStorage`, it's cleared when the tab is closed.
+             * @returns {string} The unique user ID for the session.
+             */
+            function getOrCreateSessionUserId() {
+                let sessionUserId = sessionStorage.getItem('chatkit_session_user_id');
+                if (!sessionUserId) {
+                    sessionUserId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                    sessionStorage.setItem('chatkit_session_user_id', sessionUserId);
+                }
+                return sessionUserId;
+            }
+
+            /**
+             * Asynchronously fetches a new client_secret from our Netlify serverless function.
+             * @returns {Promise<string|null>} The client_secret or null on error.
+             */
+            async function getClientSecret() {
+                try {
+                    const userId = getOrCreateSessionUserId();
+                    const response = await fetch('/.netlify/functions/chatkit-session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: userId }) 
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to fetch client secret.');
+                    }
+                    const data = await response.json();
+                    return data.client_secret;
+                } catch (error) {
+                    console.error("Error getting client secret:", error);
+                    chatContainer.innerHTML = `<div class="flex items-center justify-center h-full text-red-500 p-4">Error: Could not load chat. ${error.message}</div>`;
+                    return null;
+                }
+            }
+
+            // Initialize ChatKit using the Web Component API
+            chatContainer.setOptions({
+                api: { getClientSecret: getClientSecret },
+                theme: { colors: { primary: '#1a73e8' } }
+            });
+        };
     </script>
 </body>
-
 </html>
+

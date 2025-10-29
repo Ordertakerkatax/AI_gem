@@ -1,9 +1,9 @@
 /**
- * Netlify Function to securely generate a ChatKit client_secret using the OpenAI REST API.
- * This bypasses the unstable OpenAI JS SDK methods to ensure compatibility.
+ * Netlify Function to securely generate a ChatKit client_secret.
+ * This version is updated to correctly use environment variables and handle unique user IDs.
  */
-exports.handler = async (event, context) => {
-    // 1. Method Check
+exports.handler = async (event) => {
+    // 1. Method Check: Ensure the request is a POST.
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
@@ -11,12 +11,11 @@ exports.handler = async (event, context) => {
         };
     }
 
-    // 2. Get secret keys securely from Netlify Environment Variables
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    const WORKFLOW_ID = process.env.CHATKIT_WORKFLOW_ID;
+    // 2. Securely get secrets from Netlify Environment Variables.
+    const { OPENAI_API_KEY, CHATKIT_WORKFLOW_ID } = process.env;
 
-    if (!OPENAI_API_KEY || !WORKFLOW_ID) {
-        console.error("Missing critical environment variables.");
+    if (!OPENAI_API_KEY || !CHATKIT_WORKFLOW_ID) {
+        console.error("Missing critical environment variables: OPENAI_API_KEY or CHATKIT_WORKFLOW_ID.");
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Server configuration error: Missing API keys.' }),
@@ -24,51 +23,56 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        let userData = {};
+        let userId = 'anonymous-fallback-user'; // A default, though client should always provide one.
         try {
-            // Optional: Parse user-specific data from the frontend fetch request
-            userData = JSON.parse(event.body || '{}');
+            // 3. Parse the unique user ID sent from the frontend.
+            const body = JSON.parse(event.body || '{}');
+            if (body.userId) {
+                userId = body.userId;
+            } else {
+                console.warn("Request received without a userId. A fallback will be used.");
+            }
         } catch (e) {
-            // Invalid body data
+            console.error("Could not parse request body:", e);
+            // Proceed with fallback userId.
         }
 
-        // 3. Make the direct REST API call to OpenAI
+        // 4. Make the direct REST API call to OpenAI.
         const response = await fetch("https://api.openai.com/v1/chatkit/sessions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                // Pass the secure API key in the Authorization header
                 "Authorization": `Bearer ${OPENAI_API_KEY}`,
-                // This header is CRITICAL for accessing the ChatKit beta feature
+                // This header is CRITICAL for accessing the ChatKit beta feature.
                 "OpenAI-Beta": "chatkit_beta=v1",
             },
             body: JSON.stringify({
                 workflow: {
-                    id: "wf_68e499b75644819092b2e8ed2c3a28ad0d6f86991ff8a181" // The ID string from your Netlify environment variable
+                    // **FIX:** Use the WORKFLOW_ID from your environment variables, not a hardcoded string.
+                    id: CHATKIT_WORKFLOW_ID
                 },
-               "user": userData.deviceId || 'anonymous-user'
+                // **FIX:** Use the unique userId from the client request.
+                user: userId
             }),
         });
 
-        // 4. Handle non-200 API responses (e.g., 401 Unauthorized, 404 Not Found)
+        // 5. Handle non-200 API responses (e.g., 401 Unauthorized, 404 Not Found).
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('OpenAI API Failure Status:', response.status);
+            console.error(`OpenAI API Failure Status: ${response.status}`);
             console.error('OpenAI API Failure Details:', errorText);
             
-            // Return a generic 500 status to the client, but log details on the server
             return { 
                 statusCode: 500, 
                 body: JSON.stringify({ 
-                    error: "Failed to get secret token. Check Netlify logs for API error." 
+                    error: "Failed to create a session token. See Netlify function logs for details." 
                 }) 
             };
         }
 
-        // 5. Success: Return the client_secret to the frontend
+        // 6. Success: Return the client_secret to the frontend.
         const { client_secret } = await response.json();
-
-        console.log('Successfully created client secret.');
+        console.log(`Successfully created client secret for user: ${userId}`);
         
         return {
             statusCode: 200,
@@ -80,7 +84,7 @@ exports.handler = async (event, context) => {
         console.error('FATAL FUNCTION CRASH:', error.message);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Fatal server error during processing.' }),
+            body: JSON.stringify({ error: 'A fatal server error occurred.' }),
         };
     }
 };
